@@ -48,6 +48,7 @@ class ICMPTunClient:
                 buffer_size = len(buffer)
 
                 last_block_data_size = buffer_size % datagram.MAX_DATA_SIZE
+                last_payload_size = last_block_data_size - datagram.SEQUENCE_NUMBER_SIZE
 
                 sequence_number = 1
 
@@ -55,14 +56,23 @@ class ICMPTunClient:
                 print(f"    - Source IP:            {ip.src}")
                 print(f"    - Destination IP:       {ip.dst}")
                 print(f"    - Data block size:      {datagram.MAX_DATA_SIZE} bytes")
+                print(f"    - Payload size:         {datagram.PAYLOAD_SIZE} bytes")
                 print(f"    - Last block data size: {last_block_data_size} bytes")
+                print(f"    - Last payload size:    {last_payload_size} bytes")
 
                 if self.args.encrypted == "yes":
                     print(f"    - Encryption:           AES-{aes.AES_KEY_SIZE* 8} EAX")
 
                 print_line()
 
-                print(f"[*] Buffer size:            {buffer_size} bytes")
+                packet = datagram.Datagram(0, IP(), ICMP(), b"")
+
+                packets_to_send = (buffer_size // datagram.PAYLOAD_SIZE) + 1
+                packets_size = packet.calculate_size(False, buffer_size)
+                last_packet_size = packet.calculate_size(True, buffer_size)
+                time_to_send = SLEEP_SECONDS * packets_to_send
+
+                print(f"[*] Payload size:           {buffer_size} bytes")
 
                 if self.args.encrypted == "yes":
                     print(f"    - Key size:             {aes.AES_KEY_SIZE} bytes")
@@ -72,31 +82,26 @@ class ICMPTunClient:
                 print(f"    - File size:            {file_size} bytes")
                 print_line()
 
-                packets_to_send = (buffer_size // datagram.MAX_DATA_SIZE) + 1
-                packets_size = datagram.calculate_datagram_size(False, buffer_size)
-                last_packet_size = datagram.calculate_datagram_size(True, buffer_size)
-                time_to_send = SLEEP_SECONDS * packets_to_send
-
                 print(f"[*] Packets to send:        {packets_to_send}")
                 print(f"    - Packets size:         {packets_size} bytes")
                 print(f"    - Last packet size:     {last_packet_size} bytes")
                 print(f"    - Time to send:         {time_to_send} s")
                 print_line()
 
-                for i in range(0, buffer_size, datagram.MAX_DATA_SIZE):
+                for i in range(0, buffer_size, datagram.PAYLOAD_SIZE):
                     try:
                         last_chunk = (
-                            buffer_size - i == buffer_size % datagram.MAX_DATA_SIZE
+                            buffer_size - i == buffer_size % datagram.PAYLOAD_SIZE
                         )
 
                         if last_chunk:
                             packet = datagram.Datagram(sequence_number, ip, icmp, buffer[i:])
                         else:
-                            packet = datagram.Datagram(sequence_number, ip, icmp, buffer[i : i + datagram.MAX_DATA_SIZE])
+                            packet = datagram.Datagram(sequence_number, ip, icmp, buffer[i : i + datagram.PAYLOAD_SIZE])
 
                         packet.send()
 
-                        remaining = ReLU(buffer_size - (i + datagram.MAX_DATA_SIZE))
+                        remaining = ReLU(buffer_size - (i + datagram.PAYLOAD_SIZE))
 
                         print(
                             f"[*] Packet {sequence_number} sent.     {remaining} bytes remaining ..."

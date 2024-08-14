@@ -28,7 +28,6 @@ class Datagram:
             ICMP_HEADER_SIZE
             + IPV4_HEADER_SIZE
             + ETHERNET_HEADER_SIZE
-            + SEQUENCE_NUMBER_SIZE
         )
 
         data_size = MAX_DATA_SIZE
