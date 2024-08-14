@@ -33,7 +33,7 @@ class Datagram:
         data_size = MAX_DATA_SIZE
 
         if is_the_last:
-            data_size = buffer_size % MAX_DATA_SIZE
+            data_size = buffer_size % PAYLOAD_SIZE + SEQUENCE_NUMBER_SIZE
 
         return headers_size + data_size
 
